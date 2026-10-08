@@ -8,6 +8,7 @@
 
 #include "SDL.h"
 #include "prx/libSceVideoOut/include/PadInput.hpp"
+#include "prx/libSceVideoOut/include/AitherBridge.hpp"
 #include "prx/libSceVideoOut/include/DisplayWindow.hpp"
 #include "prx/libScePad/include/PadState.hpp"
 #include "prx/libScePad/include/PadInputTypes.hpp"
@@ -343,6 +344,7 @@ void PadInput::publish() {
         state.sticks[2] = mouseStick[0];
         state.sticks[3] = mouseStick[1];
     }
+    if (auto* bridge = AitherBridge::Instance()) bridge->ApplyPad(state.buttons, state.sticks, state.analogButtonsL2, state.analogButtonsR2);
     if (state.analogButtonsL2 != 0) state.buttons |= static_cast<std::uint32_t>(Pad::PadButton::L2);
     if (state.analogButtonsR2 != 0) state.buttons |= static_cast<std::uint32_t>(Pad::PadButton::R2);
     PadPublishInput_nid_postfix(state);

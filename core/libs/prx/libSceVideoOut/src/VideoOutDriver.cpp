@@ -10,6 +10,7 @@
 #include "SDL.h"
 #include "SDL_vulkan.h"
 #include "prx/libSceVideoOut/include/PadInput.hpp"
+#include "prx/libSceVideoOut/include/AitherBridge.hpp"
 #include "prx/libSceVideoOut/include/MouseInput.hpp"
 #include "prx/libSceVideoOut/include/KeyboardInput.hpp"
 #include "prx/libScePad/include/PadState.hpp"
@@ -438,29 +439,34 @@ void VideoOutDriver::processFlip(FlipRequest& req) {
     timing.Mark("present");
     window.UpdateTitle();
     timing.Mark("window_title");
-    std::lock_guard lock(req.cfg->mutex);
-    timing.Mark("completion_mutex_wait");
-    checkConfig(*req.cfg);
-    require(!req.terminal && req.cfg->generation == req.generation, "flip cancelled during presentation");
-    require(req.gpuComplete, "flip submitted before GPU completion");
-    require(req.cfg->flipStatus.count != std::numeric_limits<uint64_t>::max(), "flip counter overflow");
-    triggerEvents(*req.cfg, VIDEO_OUT_EVENT_FLIP, reinterpret_cast<void*>(req.flipArg));
-    ++req.cfg->flipStatus.count;
-    req.cfg->flipStatus.processTime = sceKernelGetProcessTime();
-    req.cfg->flipStatus.processTimeCounter = sceKernelGetProcessTimeCounter();
-    req.cfg->flipStatus.flipArg = req.flipArg;
-    req.cfg->flipStatus.currentBuffer = req.index;
-    req.cfg->width = req.width;
-    req.cfg->height = req.height;
-    --req.cfg->flipStatus.flipPendingNum;
-    --req.queue->reservations;
-    if (req.index >= 0) {
-        --req.cfg->bufferPending[req.index];
-        req.cfg->bufferReuse[req.index].Complete(req.reuseTicket);
+    std::uint64_t flipCount = 0;
+    {
+        std::lock_guard lock(req.cfg->mutex);
+        timing.Mark("completion_mutex_wait");
+        checkConfig(*req.cfg);
+        require(!req.terminal && req.cfg->generation == req.generation, "flip cancelled during presentation");
+        require(req.gpuComplete, "flip submitted before GPU completion");
+        require(req.cfg->flipStatus.count != std::numeric_limits<uint64_t>::max(), "flip counter overflow");
+        triggerEvents(*req.cfg, VIDEO_OUT_EVENT_FLIP, reinterpret_cast<void*>(req.flipArg));
+        ++req.cfg->flipStatus.count;
+        flipCount = req.cfg->flipStatus.count;
+        req.cfg->flipStatus.processTime = sceKernelGetProcessTime();
+        req.cfg->flipStatus.processTimeCounter = sceKernelGetProcessTimeCounter();
+        req.cfg->flipStatus.flipArg = req.flipArg;
+        req.cfg->flipStatus.currentBuffer = req.index;
+        req.cfg->width = req.width;
+        req.cfg->height = req.height;
+        --req.cfg->flipStatus.flipPendingNum;
+        --req.queue->reservations;
+        if (req.index >= 0) {
+            --req.cfg->bufferPending[req.index];
+            req.cfg->bufferReuse[req.index].Complete(req.reuseTicket);
+        }
+        req.terminal = true;
+        req.cfg->vblankCond.notify_all();
+        timing.Mark("notify_game");
     }
-    req.terminal = true;
-    req.cfg->vblankCond.notify_all();
-    timing.Mark("notify_game");
+    if (auto* bridge = AitherBridge::Instance()) bridge->OnFrame(flipCount, req.width, req.height, req.index);
 }
 
 void VideoOutDriver::presentLoop(std::stop_token token) {
