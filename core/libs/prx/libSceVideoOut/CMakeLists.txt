@@ -9,6 +9,7 @@ add_library(libSceVideoOut SHARED EXCLUDE_FROM_ALL
         ${CMAKE_CURRENT_SOURCE_DIR}/src/MouseInput.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/KeyboardInput.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/InputMapping.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/AitherBridge.cpp
 )
 
 target_include_directories(libSceVideoOut PRIVATE
@@ -18,7 +19,7 @@ target_include_directories(libSceVideoOut PRIVATE
 )
 target_link_libraries(libSceVideoOut PRIVATE libSceAgcDriver libScePad libSceMouse libSceKeyboard libc libkernel SDL2-static)
 if(WIN32)
-    target_link_libraries(libSceVideoOut PRIVATE comctl32)
+    target_link_libraries(libSceVideoOut PRIVATE comctl32 ws2_32)
 endif()
 set_target_properties(libSceVideoOut PROPERTIES CXX_EXTENSIONS OFF)
 configure_windows_unwind(libSceVideoOut)
@@ -61,4 +62,14 @@ if(BUILD_TESTING)
         set_tests_properties(guest_buffer_reuse PROPERTIES ENVIRONMENT_MODIFICATION
             "PATH=path_list_prepend:$<TARGET_FILE_DIR:libc>")
     endif()
+endif()
+
+if(BUILD_TESTING)
+    add_test_executable(aither_bridge_tests tests/AitherBridge.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/AitherBridge.cpp)
+    target_include_directories(aither_bridge_tests PRIVATE ${LIBS_INCLUDE_DIR})
+    if(WIN32)
+        target_link_libraries(aither_bridge_tests PRIVATE ws2_32)
+    endif()
+    add_test(NAME aither_bridge COMMAND aither_bridge_tests)
+    set_tests_properties(aither_bridge PROPERTIES TIMEOUT 20)
 endif()
