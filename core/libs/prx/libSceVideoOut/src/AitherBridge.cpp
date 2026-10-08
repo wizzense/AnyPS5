@@ -219,11 +219,11 @@ void Server::ApplyPad(std::uint32_t& buttons, std::array<std::uint8_t, 4>& stick
 
 Server* Instance() {
     static const std::unique_ptr<Server> server = []() -> std::unique_ptr<Server> {
-        const char* value = std::getenv("APS5_AITHER_BRIDGE");
+        const char* value = std::getenv("APS5_AGENT_BRIDGE");
         if (value == nullptr || *value == '\0') return nullptr;
         char* end = nullptr;
         const long port = std::strtol(value, &end, 10);
-        if (end == value || *end != '\0' || port < 0 || port > 65535) throw std::runtime_error("APS5_AITHER_BRIDGE must be a TCP port number");
+        if (end == value || *end != '\0' || port < 0 || port > 65535) throw std::runtime_error("APS5_AGENT_BRIDGE must be a TCP port number");
         return std::make_unique<Server>(static_cast<std::uint16_t>(port));
     }();
     return server.get();

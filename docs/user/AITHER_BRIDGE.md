@@ -1,10 +1,10 @@
 # Aither bridge
 
 An opt-in local socket that lets an external program watch frames and drive the pad. With it,
-an agent or a test harness can play a converted title. It is off unless `APS5_AITHER_BRIDGE` is set.
+an agent or a test harness can play a converted title. It is off unless `APS5_AGENT_BRIDGE` is set.
 
 ```sh
-APS5_AITHER_BRIDGE=47500 ./app.elf
+APS5_AGENT_BRIDGE=47500 ./app.elf
 ```
 
 The bridge listens on `127.0.0.1` only and accepts one client at a time. Port `0` picks a free port.
