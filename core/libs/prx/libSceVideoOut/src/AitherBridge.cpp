@@ -190,16 +190,18 @@ bool Server::sendLine(const std::string& line) {
 }
 
 void Server::dropClient() {
+    // Release the pad before the client is marked gone: once Connected() is false, no held
+    // button may still be applied.
     {
-        std::lock_guard lock(sendMutex);
-        const long long socket = client.exchange(-1);
-        if (socket >= 0) {
-            shutdownSocket(socket);
-            closeSocket(socket);
-        }
+        std::lock_guard lock(padMutex);
+        pad = PadOverride{};
     }
-    std::lock_guard lock(padMutex);
-    pad = PadOverride{};
+    std::lock_guard lock(sendMutex);
+    const long long socket = client.exchange(-1);
+    if (socket >= 0) {
+        shutdownSocket(socket);
+        closeSocket(socket);
+    }
 }
 
 void Server::OnFrame(std::uint64_t count, std::uint32_t width, std::uint32_t height, std::int32_t buffer) {
